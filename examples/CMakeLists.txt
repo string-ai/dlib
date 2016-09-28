@@ -18,7 +18,13 @@ ADD_EXECUTABLE(assignment_learning_ex assignment_learning_ex.cpp)
 # Then we tell it to link with dlib.
 TARGET_LINK_LIBRARIES(assignment_learning_ex dlib)
 
+# enable / disable debugging
+# SET(CMAKE_C_FLAGS_DEBUG "-D_DEBUG")
 
+#SET(USE_SSE4_INSTRUCTIONS "ON")
+
+# -DUSE_AVX_INSTRUCTIONS=ON
+# -DUSE_SSE4_INSTRUCTIONS=ON
 
 
 # Since there are a lot of examples I'm going to use a macro to simply this
@@ -41,6 +47,7 @@ if (COMPILER_CAN_DO_CPP_11)
 endif()
 
 #here we apply our macros 
+add_example(a_train_people_walking)
 add_example(3d_point_cloud_ex)
 add_example(bayes_net_ex)
 add_example(bayes_net_from_disk_ex)

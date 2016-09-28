@@ -16,6 +16,9 @@
 #include "../image_processing/full_object_detection.h"
 #include <utility>
 
+#include <cv.h>
+#include <iostream>
+
 
 namespace dlib
 {
@@ -83,6 +86,126 @@ namespace dlib
     };
 
 // ----------------------------------------------------------------------------------------
+    template <
+            typename image_type
+    >
+    void merge_with_background (
+            image_type& patch_img,
+            image_type& base_image,
+            rectangle position,
+            std::vector<rectangle> rects,
+            std::vector<rectangle>& adjusted_rects,
+            std::vector<rectangle> ignore_rects,
+            std::vector<rectangle>& adjusted_ignore_rects
+    )
+    {
+
+        rectangle base_rect = get_rect(base_image);
+        // make sure requires clause is not broken
+        DLIB_ASSERT( patch_img.size() <= base_image.size() && base_rect.contains(position),
+                     "\t void merge_with_background()"
+                             << "\n\t Invalid inputs were given to this function."
+                             << "\n\t patch_img.size():   " << patch_img.size()
+                             << "\n\t patch_img.nr():   " << patch_img.nr()
+                             << "\n\t patch_img.nc():   " << patch_img.nc()
+                             << "\n\t base_image.size(): " << base_image.size()
+                             << "\n\t base_image.nr():   " << base_image.nr()
+                             << "\n\t base_image.nc():   " << base_image.nc()
+                             << "\n\t position.left(): " << position.left()
+                             << "\n\t position.top():   " << position.top()
+        );
+
+        image_view<image_type> base_image_view(base_image);
+        const_image_view<image_type> patch_image_view(patch_img);
+
+        for (long r = position.top(); r < std::min(base_rect.bottom(), position.bottom()); ++r) {
+            for (long c = position.left(); c < std::min(base_rect.right(), position.right()); ++c) {
+                long patch_r = r - position.top();
+                long patch_c = c - position.left();
+                base_image_view[r][c] = patch_image_view[patch_r][patch_c];
+            }
+        }
+
+        for (unsigned int i = 0; i < rects.size(); i++) {
+            rectangle new_rect = translate_rect(rects[i], position.tl_corner());
+            adjusted_rects.push_back( new_rect );
+        }
+
+        for (unsigned int i = 0; i < ignore_rects.size(); i++) {
+            rectangle new_rect = translate_rect(rects[i], position.tl_corner());
+            adjusted_ignore_rects.push_back( new_rect );
+        }
+    }
+
+// ----------------------------------------------------------------------------------------
+
+    template <
+            typename array_type
+    >
+    std::vector<std::vector<rectangle> > load_image_dataset_with_background (
+            array_type& images,
+            std::vector<std::vector<rectangle> >& object_locations,
+            const image_dataset_file& source,
+            const std::string& folder_with_backgrounds
+    )
+    {
+        images.clear();
+        object_locations.clear();
+        const std::string old_working_dir = get_current_dir();
+
+        std::vector<std::vector<rectangle> > ignored_rects;
+
+        using namespace dlib::image_dataset_metadata;
+        dataset data;
+        load_image_dataset_metadata(data, source.get_filename());
+
+        // Set the current directory to be the one that contains the
+        // metadata file. We do this because the file might contain
+        // file paths which are relative to this folder.
+        set_current_dir(get_parent_directory(file(source.get_filename())));
+
+
+        typedef typename array_type::value_type image_type;
+
+        image_type patch_img, bg_image;
+
+
+        std::vector<rectangle> rects, ignored;
+        for (unsigned long i = 0; i < data.images.size(); ++i)
+        {
+            rects.clear();
+            ignored.clear();
+            for (unsigned long j = 0; j < data.images[i].boxes.size(); ++j)
+            {
+                if (source.should_load_box(data.images[i].boxes[j]))
+                {
+                    if (data.images[i].boxes[j].ignore)
+                        ignored.push_back(data.images[i].boxes[j].rect);
+                    else
+                        rects.push_back(data.images[i].boxes[j].rect);
+                }
+            }
+
+            if (!source.should_skip_empty_images() || rects.size() != 0)
+            {
+                load_image(bg_image, folder_with_backgrounds);
+                load_image(patch_img, data.images[i].filename);
+
+                std::vector<rectangle> adjusted_rects(rects.size());
+                image_type final_img;
+
+                merge_with_background(patch_img, bg_image, final_img, rects, adjusted_rects);
+
+                images.push_back(final_img);
+
+                object_locations.push_back(adjusted_rects);
+                ignored_rects.push_back(ignored);
+            }
+        }
+
+        set_current_dir(old_working_dir);
+        return ignored_rects;
+    }
 
     template <
         typename array_type
@@ -218,15 +341,30 @@ namespace dlib
 // ----------------------------------------------------------------------------------------
 
     template <
-        typename array_type
-        >
+            typename array_type
+    >
     std::vector<std::vector<rectangle> > load_image_dataset (
-        array_type& images,
-        std::vector<std::vector<rectangle> >& object_locations,
-        const std::string& filename
+            array_type& images,
+            std::vector<std::vector<rectangle> >& object_locations,
+            const std::string& filename
     )
     {
         return load_image_dataset(images, object_locations, image_dataset_file(filename));
+    }
+
+// ----------------------------------------------------------------------------------------
+
+    template <
+            typename array_type
+    >
+    std::vector<std::vector<rectangle> > load_image_dataset_with_background (
+            array_type& images,
+            std::vector<std::vector<rectangle> >& object_locations,
+            const std::string& folder_with_images,
+            const std::string& folder_with_backgrounds
+    )
+    {
+        return load_image_dataset_with_background(images, object_locations, image_dataset_file(folder_with_images), folder_with_backgrounds);
     }
 
 // ----------------------------------------------------------------------------------------
