@@ -65,11 +65,17 @@ int main(int argc, char** argv)
 
         // We can also easily display the edge_image as a heatmap or using the jet color
         // scheme like so.
-        image_window win_hot(heatmap(edge_image));
-        image_window win_jet(jet(edge_image));
+        image_window win_hot(heatmap(edge_image), "heatmap Edge Image");
+        image_window win_jet(jet(edge_image), "jet Edge Image");
 
         // also make a window to display the original image
         image_window my_window2(img, "Original Image");
+
+        //threashhold image
+        array2d<unsigned char> threashhold_img;
+        auto_threshold_image(edge_image, threashhold_img);
+        image_window my_window_threashhold_img(threashhold_img, "threashhold_img");
+
 
         // Sometimes you want to get input from the user about which pixels are important
         // for some task.  You can do this easily by trapping user clicks as shown below.

@@ -171,7 +171,7 @@ int main()
                 However, to keep this example program simple, we will only be using stationary
                 feature extraction regions.
         */
-        typedef hashed_feature_image<hog_image<3,3,1,4,hog_signed_gradient,hog_full_interpolation> > feature_extractor_type;
+        typedef hashed_feature_image<hog_image<3, 3, 1, 4, hog_signed_gradient, hog_full_interpolation> > feature_extractor_type;
         typedef scan_image_pyramid<pyramid_down<2>, feature_extractor_type> image_scanner_type;
         image_scanner_type scanner;
 
