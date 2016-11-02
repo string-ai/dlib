@@ -13,6 +13,7 @@
 #include "tensor_tools.h"
 #include "../vectorstream.h"
 #include "utilities.h"
+#include <sstream>
 
 
 namespace dlib
@@ -221,7 +222,14 @@ namespace dlib
                 deserialize(item.bias_weight_decay_multiplier, in);
                 if (item.padding_y_ != _padding_y) throw serialization_error("Wrong padding_y found while deserializing dlib::con_");
                 if (item.padding_x_ != _padding_x) throw serialization_error("Wrong padding_x found while deserializing dlib::con_");
-                if (num_filters != _num_filters) throw serialization_error("Wrong num_filters found while deserializing dlib::con_");
+                if (num_filters != _num_filters) 
+                {
+                    std::ostringstream sout;
+                    sout << "Wrong num_filters found while deserializing dlib::con_" << std::endl;
+                    sout << "expected " << _num_filters << " but found " << num_filters << std::endl;
+                    throw serialization_error(sout.str());
+                }
+
                 if (nr != _nr) throw serialization_error("Wrong nr found while deserializing dlib::con_");
                 if (nc != _nc) throw serialization_error("Wrong nc found while deserializing dlib::con_");
                 if (stride_y != _stride_y) throw serialization_error("Wrong stride_y found while deserializing dlib::con_");
@@ -699,7 +707,7 @@ namespace dlib
         FC_MODE = 1
     };
 
-    const double DEFAULT_BATCH_NORM_EPS = 0.00001;
+    const double DEFAULT_BATCH_NORM_EPS = 0.0001;
 
     template <
         layer_mode mode
@@ -2269,6 +2277,98 @@ namespace dlib
             typename SUBNET>
     using inception5 = concat5<itag1, itag2, itag3, itag4, itag5,
                 itag1<B1<iskip< itag2<B2<iskip< itag3<B3<iskip<  itag4<B4<iskip<  itag5<B5<  itag0<SUBNET>>>>>>>>>>>>>>>>;
+
+// ----------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
+
+    const double DEFAULT_L2_NORM_EPS = 1e-5;
+
+    class l2normalize_
+    {
+    public:
+        explicit l2normalize_(
+            double eps_ = DEFAULT_L2_NORM_EPS
+        ) : 
+            eps(eps_)
+        {
+        }
+
+        double get_eps() const { return eps; }
+
+        template <typename SUBNET>
+        void setup (const SUBNET& /*sub*/)
+        {
+        }
+
+        void forward_inplace(const tensor& input, tensor& output)
+        {
+            tt::inverse_norms(norm, input, eps);
+            tt::scale_rows(output, input, norm);
+        } 
+
+        void backward_inplace(
+            const tensor& computed_output, 
+            const tensor& gradient_input, 
+            tensor& data_grad, 
+            tensor& /*params_grad*/
+        )
+        {
+            if (is_same_object(gradient_input, data_grad))
+            {
+                tt::dot_prods(temp, gradient_input, computed_output);
+                tt::scale_rows2(0, data_grad, gradient_input, computed_output, temp, norm);
+            }
+            else
+            {
+                tt::dot_prods(temp, gradient_input, computed_output);
+                tt::scale_rows2(1, data_grad, gradient_input, computed_output, temp, norm);
+            }
+        }
+
+        const tensor& get_layer_params() const { return params; }
+        tensor& get_layer_params() { return params; }
+
+        friend void serialize(const l2normalize_& item, std::ostream& out)
+        {
+            serialize("l2normalize_", out);
+            serialize(item.eps, out);
+        }
+
+        friend void deserialize(l2normalize_& item, std::istream& in)
+        {
+            std::string version;
+            deserialize(version, in);
+            if (version != "l2normalize_")
+                throw serialization_error("Unexpected version '"+version+"' found while deserializing dlib::l2normalize_.");
+            deserialize(item.eps, in);
+        }
+
+        friend std::ostream& operator<<(std::ostream& out, const l2normalize_& item)
+        {
+            out << "l2normalize";
+            out << " eps="<<item.eps;
+            return out;
+        }
+
+        friend void to_xml(const l2normalize_& item, std::ostream& out)
+        {
+            out << "<l2normalize";
+            out << " eps='"<<item.eps<<"'";
+            out << "/>\n";
+        }
+    private:
+        double eps;
+
+        resizable_tensor params; // unused
+        // Here only to avoid reallocation and as a cache between forward/backward
+        // functions.  
+        resizable_tensor norm;
+        resizable_tensor temp;
+    };
+
+    template <typename SUBNET>
+    using l2normalize = add_layer<l2normalize_, SUBNET>;
+
 // ----------------------------------------------------------------------------------------
 
 }

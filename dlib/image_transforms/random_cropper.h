@@ -20,7 +20,7 @@ namespace dlib
         double max_rotation_degrees = 30;
         double min_object_height = 0.25; // cropped object will be at least this fraction of the height of the image.
         double max_object_height = 0.7; // cropped object will be at most this fraction of the height of the image.
-        double background_crops_fraction = 0.1;
+        double background_crops_fraction = 0.5;
 
         std::mutex rnd_mutex;
         dlib::rand rnd;
@@ -135,6 +135,7 @@ namespace dlib
             std::vector<mmod_rect>& crop_rects
         )
         {
+            DLIB_CASSERT(num_rows(img)*num_columns(img) != 0);
             chip_details crop_plan;
             bool should_flip_crop;
             make_crop_plan(img, rects, crop_plan, should_flip_crop);
@@ -233,9 +234,10 @@ namespace dlib
 
         template <typename image_type>
         rectangle make_random_cropping_rect_resnet(
-            const image_type& img
+            const image_type& img_
         )
         {
+            const_image_view<image_type> img(img_);
             // figure out what rectangle we want to crop from the image
             double mins = 0.1, maxs = 0.95;
             auto scale = rnd.get_double_in_range(mins, maxs);

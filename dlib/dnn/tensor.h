@@ -137,7 +137,7 @@ namespace dlib
             const matrix_exp<EXP>& item
         )
         {
-            DLIB_CASSERT(idx < num_samples());
+            DLIB_CASSERT(idx < (unsigned long)num_samples());
             DLIB_CASSERT(item.size() == nr()*nc()*k());
             static_assert((is_same_type<float, typename EXP::type>::value == true),
                 "To assign a matrix to a tensor the matrix must contain float values");
@@ -292,15 +292,13 @@ namespace dlib
 
         resizable_tensor(const resizable_tensor& item) : _annotation(item.annotation()) 
         {
-            // TODO, do the copy with cuda?
             copy_size(item);
-            std::memcpy(data_instance.host(), item.host(), data_instance.size()*sizeof(float));
+            memcpy(data_instance, item.data_instance);
         }
         resizable_tensor(const tensor& item) : _annotation(item.annotation()) 
         {
-            // TODO, do the copy with cuda?
             copy_size(item);
-            std::memcpy(data_instance.host(), item.host(), data_instance.size()*sizeof(float));
+            memcpy(*this, item);
         }
 
         resizable_tensor(resizable_tensor&& item) { swap(item); }
