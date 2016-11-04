@@ -48,7 +48,8 @@ int main(int argc, char** argv)
 
         // Now let's use some image functions.  First let's blur the image a little.
         array2d<unsigned char> blurred_img;
-        gaussian_blur(img, blurred_img); 
+        gaussian_blur(img, blurred_img);
+        image_window win_blurred_img(blurred_img, "blurred_img");
 
         // Now find the horizontal and vertical gradient images.
         array2d<short> horz_gradient, vert_gradient;

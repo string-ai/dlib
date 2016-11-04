@@ -145,7 +145,7 @@ add_example(timer_ex)
 add_gui_example(train_object_detector)
 add_example(train_shape_predictor_ex)
 add_example(using_custom_kernels_ex)
-add_gui_example(video_tracking_ex)
+#add_gui_example(video_tracking_ex)
 add_example(xml_parser_ex)
 
 
@@ -158,6 +158,10 @@ else()
 
       ADD_EXECUTABLE(webcam_face_pose_ex webcam_face_pose_ex.cpp)
       TARGET_LINK_LIBRARIES(webcam_face_pose_ex dlib ${OpenCV_LIBS} )
+
+      ADD_EXECUTABLE(video_tracking_ex video_tracking_ex.cpp)
+      TARGET_LINK_LIBRARIES(video_tracking_ex dlib ${OpenCV_LIBS} )
+
    else()
       message("OpenCV not found, so we won't build the webcam_face_pose_ex example.")
    endif()
